@@ -6,10 +6,37 @@ import (
 	"time"
 
 	"github.com/tneuqole/greenlight/internal/model"
+	"github.com/tneuqole/greenlight/internal/validator"
 )
 
 func (app *application) postMovie(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "post movie")
+	var input struct {
+		Title   string        `json:"title"`
+		Year    int32         `json:"year"`
+		Runtime model.Runtime `json:"runtime"`
+		Genres  []string      `json:"genres"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+	m := &model.Movie{
+		Title:   input.Title,
+		Year:    input.Year,
+		Runtime: input.Runtime,
+		Genres:  input.Genres,
+	}
+
+	if model.ValidateMovie(v, m); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	fmt.Fprintf(w, "%+v\n", input)
 }
 
 func (app *application) getMovie(w http.ResponseWriter, r *http.Request) {

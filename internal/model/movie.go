@@ -1,12 +1,14 @@
 package model
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/tneuqole/greenlight/internal/validator"
 )
 
@@ -64,4 +66,84 @@ func ValidateMovie(v *validator.Validator, m *Movie) {
 	v.Check(len(m.Genres) >= 1, "genres", "must contain at least 1 genre")
 	v.Check(len(m.Genres) <= 5, "genres", "must not contain more than 5 genres")
 	v.Check(validator.Unique(m.Genres), "genres", "values must be unique")
+}
+
+type MovieModel struct {
+	DB *sql.DB
+}
+
+func (m MovieModel) Insert(movie *Movie) error {
+	q := `INSERT INTO movie (title, year, runtime, genres)
+	VALUES ($1, $2, $3, $4)
+	RETURNING id, created_at, version`
+
+	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
+	return m.DB.QueryRow(q, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+}
+
+func (m MovieModel) Get(id int64) (*Movie, error) {
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+
+	q := `SELECT id, created_at, title, year, runtime, genres, version
+	FROM movie WHERE id=$1`
+
+	var movie Movie
+	err := m.DB.QueryRow(q, id).Scan(
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &movie, nil
+}
+
+func (m MovieModel) Update(movie *Movie) error {
+	q := `UPDATE movie SET title=$1, year=$2, runtime=$3, genres=$4, version=version+1
+	WHERE id=$5 RETURNING version`
+
+	args := []any{
+		movie.Title,
+		movie.Year,
+		movie.Runtime,
+		pq.Array(&movie.Genres),
+		movie.ID,
+	}
+	return m.DB.QueryRow(q, args...).Scan(&movie.Version)
+}
+
+func (m MovieModel) Delete(id int64) error {
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+
+	q := `DELETE from movie where id=$1`
+	result, err := m.DB.Exec(q, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+
+	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/tneuqole/greenlight/internal/model"
 )
 
 const version = "1.0.0"
@@ -29,6 +30,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models model.Models
 }
 
 func openDB(cfg config) (*sql.DB, error) {
@@ -76,6 +78,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: model.NewModels(db),
 	}
 
 	srv := &http.Server{

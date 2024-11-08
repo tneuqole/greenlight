@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"github.com/lib/pq"
 	"github.com/tneuqole/greenlight/internal/validator"
 )
+
+const Q_TIMEOUT = 3 * time.Second
 
 var ErrInvalidRuntimeFormat = errors.New("invalid runtime format")
 
@@ -77,8 +80,11 @@ func (m MovieModel) Insert(movie *Movie) error {
 	VALUES ($1, $2, $3, $4)
 	RETURNING id, created_at, version`
 
+	ctx, cancel := context.WithTimeout(context.Background(), Q_TIMEOUT)
+	defer cancel()
+
 	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
-	return m.DB.QueryRow(q, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	return m.DB.QueryRowContext(ctx, q, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
 func (m MovieModel) Get(id int64) (*Movie, error) {
@@ -90,7 +96,9 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	FROM movie WHERE id=$1`
 
 	var movie Movie
-	err := m.DB.QueryRow(q, id).Scan(
+	ctx, cancel := context.WithTimeout(context.Background(), Q_TIMEOUT)
+	defer cancel()
+	err := m.DB.QueryRowContext(ctx, q, id).Scan(
 		&movie.ID,
 		&movie.CreatedAt,
 		&movie.Title,
@@ -113,7 +121,8 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 
 func (m MovieModel) Update(movie *Movie) error {
 	q := `UPDATE movie SET title=$1, year=$2, runtime=$3, genres=$4, version=version+1
-	WHERE id=$5 RETURNING version`
+	WHERE id=$5 AND version=$6
+	RETURNING version`
 
 	args := []any{
 		movie.Title,
@@ -121,8 +130,23 @@ func (m MovieModel) Update(movie *Movie) error {
 		movie.Runtime,
 		pq.Array(&movie.Genres),
 		movie.ID,
+		movie.Version,
 	}
-	return m.DB.QueryRow(q, args...).Scan(&movie.Version)
+
+	ctx, cancel := context.WithTimeout(context.Background(), Q_TIMEOUT)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, q, args...).Scan(&movie.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m MovieModel) Delete(id int64) error {
@@ -131,7 +155,11 @@ func (m MovieModel) Delete(id int64) error {
 	}
 
 	q := `DELETE from movie where id=$1`
-	result, err := m.DB.Exec(q, id)
+
+	ctx, cancel := context.WithTimeout(context.Background(), Q_TIMEOUT)
+	defer cancel()
+
+	result, err := m.DB.ExecContext(ctx, q, id)
 	if err != nil {
 		return err
 	}

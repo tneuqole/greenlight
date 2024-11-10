@@ -175,3 +175,51 @@ func (m MovieModel) Delete(id int64) error {
 
 	return nil
 }
+
+func (m MovieModel) GetAll(title string, genres []string, f Filters) ([]*Movie, Metadata, error) {
+	q := fmt.Sprintf(`SELECT count(*) OVER(), id, created_at, title, year, runtime, genres, version
+	FROM movie
+	WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+	AND (genres @> $2 OR $2='{}')
+	ORDER BY %s %s, id ASC
+	LIMIT $3 OFFSET $4`, f.sortColumn(), f.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), Q_TIMEOUT)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, q, title, pq.Array(genres), f.limit(), f.offset())
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+
+	defer rows.Close()
+
+	totalRecords := 0
+	movies := []*Movie{}
+	for rows.Next() {
+		var movie Movie
+		err := rows.Scan(
+			&totalRecords,
+			&movie.ID,
+			&movie.CreatedAt,
+			&movie.Title,
+			&movie.Year,
+			&movie.Runtime,
+			pq.Array(&movie.Genres),
+			&movie.Version,
+		)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+
+		movies = append(movies, &movie)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetadata(totalRecords, f.Page, f.PageSize)
+
+	return movies, metadata, nil
+}

@@ -168,3 +168,37 @@ func (app *application) deleteMovie(w http.ResponseWriter, r *http.Request) {
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) getMovies(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title  string
+		Genres []string
+		model.Filters
+	}
+
+	v := validator.New()
+	qp := r.URL.Query()
+
+	input.Title = app.readString(qp, "title", "")
+	input.Genres = app.readList(qp, "genres", []string{})
+	input.Page = app.readInt(qp, "page", 1, v)
+	input.PageSize = app.readInt(qp, "page_size", 20, v)
+	input.Sort = app.readString(qp, "sort", "id")
+	input.SortAllowlist = []string{"id", "-id", "title", "-title", "year", "-year", "runtime", "-runtime"}
+
+	if model.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	movies, metadata, err := app.models.Movies.GetAll(input.Title, input.Genres, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"metadata": metadata, "movies": movies}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

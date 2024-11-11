@@ -13,6 +13,9 @@ func (app *application) routes() http.Handler {
 	r.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
 	r.HandlerFunc(http.MethodGet, "/v1/health", app.healthHandler)
+
+	r.HandlerFunc(http.MethodPost, "/v1/users", app.postUser)
+
 	r.HandlerFunc(http.MethodPost, "/v1/movies", app.postMovie)
 	r.HandlerFunc(http.MethodGet, "/v1/movies", app.getMovies)
 	r.HandlerFunc(http.MethodGet, "/v1/movies/:id", app.getMovie)

@@ -13,3 +13,9 @@ CREATE ROLE greenlight WITH LOGIN PASSWORD '<password>';
 CREATE EXTENSION IF NOT EXISTS citext;
 ALTER DATABASE greenlight OWNER TO greenlight;
 ```
+
+## Running the server
+
+```zsh
+go run ./cmd/api -smtp-username=<username> -smtp-password=<password>
+```

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"time"
@@ -88,7 +89,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 }
 
 func (m UserModel) Update(user *User) error {
-	q := `UPDATE users SET name=$1, email=$2, password_hash=$3, activated=$4, version=verison+1
+	q := `UPDATE users SET name=$1, email=$2, password_hash=$3, activated=$4, version=version+1
 	WHERE id=$5 AND version=$6
 	RETURNING version`
 
@@ -119,6 +120,43 @@ func (m UserModel) Update(user *User) error {
 	}
 
 	return nil
+}
+
+func (m UserModel) GetForToken(scope, plaintext string) (*User, error) {
+	q := `SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
+        FROM users
+        INNER JOIN tokens
+        ON users.id = tokens.user_id
+        WHERE tokens.hash = $1
+        AND tokens.scope = $2 
+        AND tokens.expiry > $3`
+
+	hash := sha256.Sum256([]byte(plaintext))
+
+	var user User
+
+	ctx, cancel := context.WithTimeout(context.Background(), Q_TIMEOUT)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, q, hash[:], scope, time.Now()).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.hash,
+		&user.Activated,
+		&user.Version,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
 }
 
 type password struct {

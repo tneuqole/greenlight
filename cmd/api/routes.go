@@ -17,6 +17,8 @@ func (app *application) routes() http.Handler {
 	r.HandlerFunc(http.MethodPost, "/v1/users", app.postUser)
 	r.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUser)
 
+	r.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.getAuthenticationToken)
+
 	r.HandlerFunc(http.MethodPost, "/v1/movies", app.postMovie)
 	r.HandlerFunc(http.MethodGet, "/v1/movies", app.getMovies)
 	r.HandlerFunc(http.MethodGet, "/v1/movies/:id", app.getMovie)
@@ -24,5 +26,5 @@ func (app *application) routes() http.Handler {
 	r.HandlerFunc(http.MethodPatch, "/v1/movies/:id", app.putMovie)
 	r.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.deleteMovie)
 
-	return app.recoverPanic(app.rateLimit(r))
+	return app.recoverPanic(app.rateLimit(app.authenticate(r)))
 }

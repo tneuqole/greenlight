@@ -11,7 +11,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrDuplicateEmail = errors.New("duplicate email")
+var (
+	ErrDuplicateEmail = errors.New("duplicate email")
+	AnonymousUser     = &User{}
+)
 
 type User struct {
 	ID        int64     `json:"id"`
@@ -21,6 +24,10 @@ type User struct {
 	Password  password  `json:"-"`
 	Activated bool      `json:"activated"`
 	Version   int       `json:"-"`
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 type UserModel struct {
@@ -67,7 +74,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 	defer cancel()
 
 	var user User
-	err := m.DB.QueryRowContext(ctx, q, user.Email).Scan(
+	err := m.DB.QueryRowContext(ctx, q, email).Scan(
 		&user.ID,
 		&user.CreatedAt,
 		&user.Name,

@@ -25,5 +25,5 @@ func (app *application) routes() http.Handler {
 	r.HandlerFunc(http.MethodPatch, "/v1/movies/:id", app.requirePermission("movies:write", app.putMovie))
 	r.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.requirePermission("movies:write", app.deleteMovie))
 
-	return app.recoverPanic(app.rateLimit(app.authenticate(r)))
+	return app.recoverPanic(app.enableCORS(app.rateLimit(app.authenticate(r))))
 }

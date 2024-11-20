@@ -16,6 +16,8 @@ ALTER DATABASE greenlight OWNER TO greenlight;
 
 ## Running the server
 
+Create a `.env` file and populate the variables from `.env.example`
+
 ```zsh
-go run ./cmd/api -smtp-username=<username> -smtp-password=<password>
+make run/api
 ```

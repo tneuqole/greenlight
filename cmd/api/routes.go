@@ -19,12 +19,11 @@ func (app *application) routes() http.Handler {
 
 	r.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.getAuthenticationToken)
 
-	r.HandlerFunc(http.MethodPost, "/v1/movies", app.postMovie)
-	r.HandlerFunc(http.MethodGet, "/v1/movies", app.getMovies)
-	r.HandlerFunc(http.MethodGet, "/v1/movies/:id", app.getMovie)
-	r.HandlerFunc(http.MethodPut, "/v1/movies/:id", app.putMovie)
-	r.HandlerFunc(http.MethodPatch, "/v1/movies/:id", app.putMovie)
-	r.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.deleteMovie)
+	r.HandlerFunc(http.MethodPost, "/v1/movies", app.requirePermission("movies:write", app.postMovie))
+	r.HandlerFunc(http.MethodGet, "/v1/movies", app.requirePermission("movies:read", app.getMovies))
+	r.HandlerFunc(http.MethodGet, "/v1/movies/:id", app.requirePermission("movies:read", app.getMovie))
+	r.HandlerFunc(http.MethodPatch, "/v1/movies/:id", app.requirePermission("movies:write", app.putMovie))
+	r.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.requirePermission("movies:write", app.deleteMovie))
 
 	return app.recoverPanic(app.rateLimit(app.authenticate(r)))
 }

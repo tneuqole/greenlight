@@ -75,3 +75,29 @@ audit:
 build/api:
 	@echo "Building cmd/api..."
 	go build -ldflags="-s" -o ./bin/api ./cmd/api
+	GOOS=linux GOARCH=amd64 go build -ldflags="-s" -o ./bin/linux_amd64/api ./cmd/api
+
+# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+
+## prod/connect: connect to the production server
+.PHONY: prod/connect
+prod/connect:
+	ssh greenlight@${PROD_HOST_IP}
+
+## prod/deploy/api: deploy the api to production
+.PHONY: prod/deploy/api
+prod/deploy/api:
+	rsync -P ./bin/linux_amd64/api greenlight@${PROD_HOST_IP}:~
+	rsync -rP --delete ./migrations greenlight@${PROD_HOST_IP}:~
+	rsync -P ./remote/production/api.service greenlight@${PROD_HOST_IP}:~
+	rsync -P ./remote/production/Caddyfile greenlight@${PROD_HOST_IP}:~
+	ssh -t greenlight@${PROD_HOST_IP} '\
+		migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up \
+		&& sudo mv ~/api.service /etc/systemd/system/ \
+		&& sudo systemctl enable api \
+		&& sudo systemctl restart api \
+		&& sudo mv ~/Caddyfile /etc/caddy/ \
+		&& sudo systemctl reload caddy \
+	'

@@ -18,8 +18,10 @@ func (app *application) routes() http.Handler {
 
 	r.HandlerFunc(http.MethodPost, "/v1/users", app.postUser)
 	r.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUser)
+	r.HandlerFunc(http.MethodPut, "/v1/users/password", app.putPassword)
 
-	r.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.getAuthenticationToken)
+	r.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.postAuthenticationToken)
+	r.HandlerFunc(http.MethodPost, "/v1/tokens/password-reset", app.postPasswordResetToken)
 
 	r.HandlerFunc(http.MethodPost, "/v1/movies", app.requirePermission("movies:write", app.postMovie))
 	r.HandlerFunc(http.MethodGet, "/v1/movies", app.requirePermission("movies:read", app.getMovies))

@@ -2,6 +2,8 @@
 
 This repo contains my code from reading the book [Let's Go Further](https://lets-go-further.alexedwards.net/)
 
+Finished Nov 29 2024. This book was also a gold mine, highly recommend.
+
 ## Local database setup
 
 ```zsh
@@ -12,6 +14,12 @@ CREATE DATABASE greenlight;
 CREATE ROLE greenlight WITH LOGIN PASSWORD '<password>';
 CREATE EXTENSION IF NOT EXISTS citext;
 ALTER DATABASE greenlight OWNER TO greenlight;
+```
+
+Run database migrations
+
+```zsh
+make db/migrations/up
 ```
 
 ## Running the server

@@ -21,6 +21,7 @@ func (app *application) routes() http.Handler {
 	r.HandlerFunc(http.MethodPut, "/v1/users/password", app.putPassword)
 
 	r.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.postAuthenticationToken)
+	r.HandlerFunc(http.MethodPost, "/v1/tokens/activation", app.postActivationToken)
 	r.HandlerFunc(http.MethodPost, "/v1/tokens/password-reset", app.postPasswordResetToken)
 
 	r.HandlerFunc(http.MethodPost, "/v1/movies", app.requirePermission("movies:write", app.postMovie))
